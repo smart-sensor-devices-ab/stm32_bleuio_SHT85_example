@@ -18,7 +18,8 @@ Either clone the project, or download it as a zip file and unzip it, into your S
 
 - From STM32CubeIDE choose File>Import...>General>Existing Projects into Workspace then click 'Next >'
 - Make sure you've choosen your workspace in 'Select root directory:'
-- You should see the project "stm32_bleuio_example", check it and click 'Finish'.
+- You should see the project "stm32_bleuio_SHT85_example", check it and click 'Finish'.
+  > If you download the project as a zip file you will need to rename the project folder from 'stm32_bleuio_SHT85_example-master' to 'stm32_bleuio_SHT85_example'
 
 # 3. Running the example
 
