@@ -1,8 +1,9 @@
-Example project on how to setup a STM32 Microcontroller with USB port to run the BleuIO dongle with the STM32 as a USB CDC Host.
+Example project on how to read values from a SHT85 sensor connected to a STM32 Microcontroller with USB port and advertise the results using the BleuIO dongle with the STM32 as a USB CDC Host.
 
 # 1. What you will need
 
 - A BleuIO dongle (https://www.bleuio.com/)
+- A SHT85 sensor (https://sensirion.com/products/catalog/SHT85/)
 - A board with a STM32 Microcontroller with a USB port. (A Nucleo-144 development board: NUCLEO-H743ZI2, was used developing this example. (https://www.st.com/en/evaluation-tools/nucleo-h743zi.html)<br>
   To connect the dongle to the Nucleo board we used a "USB A to Micro USB B"-cable with a USB A female-to-female adapter.)
 - STM32CubeIDE (https://www.st.com/en/development-tools/stm32cubeide.html)
@@ -37,8 +38,6 @@ Either clone the project, or download it as a zip file and unzip it, into your S
 - In STMCubeIDE click the green play button to flash and run it on your board. The first time you click it the 'Run Configuration' window will appear. You can just leave it as is and click run.
 
 - Connect the BleuIO Dongle.
-- Wait until the message: "[BleuIO Dongle Ready]" is shown.
-- Press 0 to get device information, 1 to start advertising and 2 to stop advertising. Dongle response will be printed to uart.
 
 # 4. Links
 

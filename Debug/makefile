@@ -39,34 +39,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := stm32_bleuio_example
+BUILD_ARTIFACT_NAME := stm32_bleuio_SHT85_example
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-stm32_bleuio_example.elf \
+stm32_bleuio_SHT85_example.elf \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-stm32_bleuio_example.list \
+stm32_bleuio_SHT85_example.list \
 
 OBJCOPY_BIN += \
-stm32_bleuio_example.bin \
+stm32_bleuio_SHT85_example.bin \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: stm32_bleuio_example.elf secondary-outputs
+main-build: stm32_bleuio_SHT85_example.elf secondary-outputs
 
 # Tool invocations
-stm32_bleuio_example.elf: $(OBJS) $(USER_OBJS) C:\Users\emil\STM32CubeIDE\workspace_1.5.0\stm32_bleuio_example\STM32H743ZITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "stm32_bleuio_example.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\emil\STM32CubeIDE\workspace_1.5.0\stm32_bleuio_example\STM32H743ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="stm32_bleuio_example.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+stm32_bleuio_SHT85_example.elf: $(OBJS) $(USER_OBJS) C:\Users\emil\STM32CubeIDE\workspace_1.5.0\stm32_bleuio_SHT85_example\STM32H743ZITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "stm32_bleuio_SHT85_example.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\emil\STM32CubeIDE\workspace_1.5.0\stm32_bleuio_SHT85_example\STM32H743ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="stm32_bleuio_SHT85_example.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -75,19 +75,19 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-stm32_bleuio_example.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "stm32_bleuio_example.list"
+stm32_bleuio_SHT85_example.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "stm32_bleuio_SHT85_example.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-stm32_bleuio_example.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "stm32_bleuio_example.bin"
+stm32_bleuio_SHT85_example.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "stm32_bleuio_SHT85_example.bin"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(SIZE_OUTPUT)$(OBJDUMP_LIST)$(EXECUTABLES)$(OBJS)$(S_DEPS)$(S_UPPER_DEPS)$(C_DEPS)$(OBJCOPY_BIN) stm32_bleuio_example.elf
+	-$(RM) $(SIZE_OUTPUT)$(OBJDUMP_LIST)$(EXECUTABLES)$(OBJS)$(S_DEPS)$(S_UPPER_DEPS)$(C_DEPS)$(OBJCOPY_BIN) stm32_bleuio_SHT85_example.elf
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_BIN)

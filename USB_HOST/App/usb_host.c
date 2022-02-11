@@ -90,6 +90,16 @@ void USBH_CDC_ReceiveCallback(USBH_HandleTypeDef *phost)
   * @brief Simple function that takes a string and transmit it to the dongle
   * @retval None
   */
+void disableUSB(void)
+{
+	USBH_CDC_Stop(&hUsbHostFS);
+}
+
+void enableUSB(void)
+{
+	USBH_CDC_Receive(&hUsbHostFS, CDC_RX_Buffer, RX_BUFF_SIZE);
+}
+
 void writeToDongle(uint8_t * cmd)
 {
 	USBH_CDC_Transmit(&hUsbHostFS, cmd, strlen((char *)cmd));

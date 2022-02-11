@@ -33,7 +33,8 @@
 
 /* USER CODE BEGIN INCLUDE */
  void writeToDongle(uint8_t * cmd);
-
+ void disableUSB(void);
+ void enableUSB(void);
 /* USER CODE END INCLUDE */
 
 /** @addtogroup USBH_OTG_DRIVER
@@ -73,8 +74,6 @@ typedef enum {
 void MX_USB_HOST_Init(void);
 
 void MX_USB_HOST_Process(void);
-
-
 
 /**
   * @}

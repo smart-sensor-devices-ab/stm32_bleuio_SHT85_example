@@ -29,16 +29,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef enum {
-  UART_RX_0 = 48,
-  UART_RX_1,
-  UART_RX_2,
-  UART_RX_3,
-  UART_RX_4,
-  UART_RX_5,
-  UART_RX_NONE = 0xFF,
-}UARTCommandTypeDef;
-
 
 // SHT85 defines
 typedef enum {
@@ -155,6 +145,8 @@ ETH_HandleTypeDef heth;
 
 I2C_HandleTypeDef hi2c2;
 
+TIM_HandleTypeDef htim6;
+
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
@@ -178,13 +170,10 @@ float    humidity;
 HAL_StatusTypeDef err0r;
 
 
-
+static int systemTime;
 static char uart_tx_buf[250];
 int uart_buf_len;
 bool isBleuIOReady;
-static UARTCommandTypeDef uartStatus;
-static uint8_t aRxBuffer[RXBUFFERSIZE];
-static int RX_value;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -193,11 +182,10 @@ static void MX_GPIO_Init(void);
 static void MX_ETH_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_I2C2_Init(void);
+static void MX_TIM6_Init(void);
 void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
-void handleUartInput(UARTCommandTypeDef cmd);
-
 
 void i2c_bus_scan(I2C_HandleTypeDef hi2c);
 
@@ -239,16 +227,15 @@ int main(void)
   MX_GPIO_Init();
   MX_ETH_Init();
   MX_USART3_UART_Init();
- // MX_USB_HOST_Init();
+  MX_USB_HOST_Init();
   MX_I2C2_Init();
-
-
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   isBleuIOReady = false;
-  uartStatus = UART_RX_NONE;
 
-  // Starts uart recieve interrupt mode
-  HAL_UART_Receive_IT(&huart3, (uint8_t *)aRxBuffer, RXBUFFERSIZE);
+  // scan i2c bus 2 (external)
+  i2c_bus_scan(hi2c2);
+  HAL_Delay(1000);
 
   // Turns on all LEDs on start up
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
@@ -260,12 +247,8 @@ int main(void)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
 
-  // scan i2c bus 2 (external)
-  i2c_bus_scan(hi2c2);
-	HAL_Delay(1000);
-
   // Sends welcome message to uart
-  uart_buf_len = sprintf(uart_tx_buf, "\r\nWelcome to This Tutorial on STM32 BleuIO Example!\r\n, My name is Emil Lindblom\r\n Please Press 0 to run the ATI command\r\nPress 1 to start advertising\r\nPress 2 to stop advertising\r\nPress 3 to read temp & Humidity\r\n\r\n");
+  uart_buf_len = sprintf(uart_tx_buf, "\r\nWelcome to the STM32 BleuIO SHT85 Example!\r\n");
   HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
 
 
@@ -283,15 +266,18 @@ int main(void)
   // Raed and print SHT85 Serial Number
   SHT85_ReadSerialNumber(&serialNumber);
   HAL_Delay(200); // in ms
-  uart_buf_len = sprintf(uart_tx_buf,  "serialNumber: 0x%08X \r\n", (int)serialNumber);
+  uart_buf_len = sprintf(uart_tx_buf,  "\r\nSensor SerialNumber: 0x%08X\r\n", (int)serialNumber);
   HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, 100);
   HAL_Delay(200); // in ms
-
-
+  bool advOn = false;
+  char serialNr_str[10];
+  char temp_str[10];
+  char humidity_str[10];
 
    WriteCommand(PERI_MEAS_HIGH_1_HZ); // Set SHT85 read frequency
 
-
+   HAL_TIM_Base_Start_IT(&htim6);
+   systemTime = 25;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -299,16 +285,33 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-   // MX_USB_HOST_Process();
+    MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
     // Simple handler for uart input
-    handleUartInput(uartStatus);
-
-
-    HAL_Delay(1000); // in ms
-
-
+    if(systemTime < 0)
+    {
+    	if(!advOn && isBleuIOReady)
+    	{
+    		writeToDongle((uint8_t*)DONGLE_CMD_AT_ADVSTART);
+    		advOn = true;
+    	} else
+    	{
+			SHT85_SingleMeasurment(&temperature, &humidity, SINGLE_MEAS_HIGH, 50);
+			systemTime = 10;
+			sprintf(serialNr_str, "%08X",(int) serialNumber);
+			sprintf(temp_str, "%04X", (int)(temperature * 100));
+			sprintf(humidity_str, "%04X",(int)(humidity * 100));
+			uart_buf_len = sprintf(uart_tx_buf,  "AT+ADVDATA=0B:FF:5B:07:%c%c:%c%c:%c%c:%c%c:%c%c:%c%c:%c%c:%c%c\r\n",
+					serialNr_str[0],serialNr_str[1],serialNr_str[2],serialNr_str[3],serialNr_str[4],serialNr_str[5],serialNr_str[6],serialNr_str[7],
+					temp_str[0],temp_str[1],temp_str[2],temp_str[3],
+					humidity_str[0],humidity_str[1],humidity_str[2],humidity_str[3]);
+			if(isBleuIOReady)
+			{
+				writeToDongle((uint8_t *)uart_tx_buf);
+			}
+    	}
+    }
   }
   /* USER CODE END 3 */
 }
@@ -466,6 +469,44 @@ static void MX_I2C2_Init(void)
 }
 
 /**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 6400 -1;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 10000 -1;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -577,169 +618,15 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
+
+// Callback: timer has rolled over
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	if(UartHandle == &huart3)
-	{
-		RX_value = (int)aRxBuffer[0];
-		uartStatus = UART_RX_NONE;
-
-		switch(RX_value)
-		{
-			case UART_RX_0:
-			{
-				uartStatus = UART_RX_0;
-				break;
-			}
-			case UART_RX_1:
-			{
-				uartStatus = UART_RX_1;
-				break;
-			}
-			case UART_RX_2:
-			{
-				uartStatus = UART_RX_2;
-				break;
-			}
-
-			case UART_RX_3:
-			{
-				uartStatus = UART_RX_3;
-				break;
-			}
-
-			case UART_RX_4:
-			{
-				uartStatus = UART_RX_4;
-				break;
-			}
-
-			case UART_RX_5:
-			{
-				uartStatus = UART_RX_5;
-				break;
-			}
-
-			default:
-			{
-				uartStatus = UART_RX_NONE;
-				break;
-			}
-		}
-		// Resets uart recieve interrupt mode
-		HAL_UART_Receive_IT(&huart3, (uint8_t *)aRxBuffer, RXBUFFERSIZE);
-	}
-}
-
-
-/**
-  * @brief Simple uart input handler
-  * @retval None
-  */
-void handleUartInput(UARTCommandTypeDef cmd)
-{
-	switch(cmd)
-	{
-		case UART_RX_0:
-		{
-			// 0
-			uart_buf_len = sprintf(uart_tx_buf, "\r\n(0 pressed)\r\n");
-			HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			if(isBleuIOReady)
-			{
-				writeToDongle((uint8_t*)DONGLE_CMD_ATI);
-			} else
-			{
-				uart_buf_len = sprintf(uart_tx_buf, BLEUIO_NOT_READY_MSG);
-				HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			}
-			uartStatus = UART_RX_NONE;
-			break;
-		}
-
-		case UART_RX_1:
-		{
-			// 1
-			uart_buf_len = sprintf(uart_tx_buf, "\r\n(1 pressed)\r\n");
-			HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			if(isBleuIOReady)
-			{
-				writeToDongle((uint8_t*)DONGLE_CMD_AT_ADVSTART);
-			} else
-			{
-				uart_buf_len = sprintf(uart_tx_buf, BLEUIO_NOT_READY_MSG);
-				HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			}
-			uartStatus = UART_RX_NONE;
-			break;
-		}
-
-		case UART_RX_2:
-		{
-			// 2
-			uart_buf_len = sprintf(uart_tx_buf, "\r\n(2 pressed)\r\n");
-			HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			if(isBleuIOReady)
-			{
-				writeToDongle((uint8_t*)DONGLE_CMD_AT_ADVSTOP);
-			} else
-			{
-				uart_buf_len = sprintf(uart_tx_buf, BLEUIO_NOT_READY_MSG);
-				HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			}
-			uartStatus = UART_RX_NONE;
-			break;
-		}
-
-		case UART_RX_3:
-		{
-		    SHT85_SingleMeasurment(&temperature, &humidity, SINGLE_MEAS_HIGH, 50);
-		    HAL_Delay(1000); // in ms
-
-			 uart_buf_len = sprintf(uart_tx_buf, "\r\n temperature:%.2f \r\n humidity: %.2f \r\n Error: %i",temperature,humidity,  err0r);
-			  HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			  uartStatus = UART_RX_NONE;
-			  break;
-	    }
-
-		case UART_RX_4:
-		{
-
-			SHT85_ReadStatus(&SHt85_status);
-			HAL_Delay(1000); // in ms
-
-			uart_buf_len = sprintf(uart_tx_buf, "\r\n SHt85_status 0x%X \r\n Error: %i",SHt85_status,  err0r);
-		    HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			uartStatus = UART_RX_NONE;
-		    break;
-		}
-
-		case UART_RX_5:
-		{
-
-			SHT85_ReadSerialNumber(&serialNumber);
-			HAL_Delay(1000); // in ms
-
-			uart_buf_len = sprintf(uart_tx_buf, "\r\n SHt85 Serial Nr: 0x%4X \r\n Error: %i",serialNumber,  err0r);
-		    HAL_UART_Transmit(&huart3, (uint8_t *)uart_tx_buf, uart_buf_len, HAL_MAX_DELAY);
-			uartStatus = UART_RX_NONE;
-			break;
-		}
-
-
-
-
-		case UART_RX_NONE:
-		{
-			break;
-		}
-
-		default:
-		{
-			uartStatus = UART_RX_NONE;
-			break;
-		}
-	}
+  // Check which version of the timer triggered this callback and add to systemTime counter.
+  if (htim == &htim6 )
+  {
+	systemTime--;
+  }
 }
 
 /**
@@ -834,7 +721,6 @@ void SHT85_SingleMeasurment(float* temperature, float* humidity,
                                etSingleMeasureModes measureMode,
                                uint8_t timeout)
 {
-  etError  error;           // error code
   uint16_t rawValueTemp;    // temperature raw value from sensor
   uint16_t rawValueHumi;    // humidity raw value from sensor
   uint8_t revbufff[10];
@@ -843,15 +729,10 @@ void SHT85_SingleMeasurment(float* temperature, float* humidity,
   *humidity = 0;
 
   WriteCommand((etCommands)measureMode);
-  //  if(err0r!=HAL_OK)
-  //      return;
 
-  //System_DelayUs(100 000);
-  HAL_Delay(1000); // in ms
+  HAL_Delay(200); // in ms
 
   err0r= HAL_I2C_Master_Receive(&hi2c2,(uint16_t)(I2C_ADDR<<1),revbufff, 6, HAL_MAX_DELAY);
- // if(err0r!=HAL_OK)
-  //      return;
 
     rawValueTemp=(uint16_t)(revbufff[0] << 8) | revbufff[1];
     rawValueHumi=(uint16_t)(revbufff[3] << 8) | revbufff[4];

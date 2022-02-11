@@ -1,0 +1,7 @@
+Advertising name: BleuIO
+
+Dongle Advertising packet format:
+0BFF5B0705084FA308900828
+
+     0B		 FF	   5B07		  05084FA3		              0890				     0828
+Packet length	Flag	Company Id      Sensor boardId		Temperature in hex (divide by 100)	Humidity in hex (divide by 100)
